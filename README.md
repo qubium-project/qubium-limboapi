@@ -1,3 +1,10 @@
+> **QUBIUM fork.** [Elytrium/LimboAPI](https://github.com/Elytrium/LimboAPI) `bfef579` (Minecraft 26.3, Velocity 4.x) with one change:
+> a keepalive answer that does not match the limbo's own is ignored during the first 5 s after a player arrives instead of
+> closing the connection — a player moved from a server may still answer that server's keepalive sent right before the move
+> (`LimboSessionHandlerImpl#handle(KeepAlivePacket)`, marked `QUBIUM`). Version `1.1.27-qubium.N`; built with
+> `./gradlew build` on JDK 25, the jar is `plugin/build/libs/limboapi-1.1.27-qubium.N.jar`. To take a newer upstream: merge
+> `upstream/master`, keep the marked change, bump N.
+
 <img src="https://elytrium.net/src/img/elytrium.webp" alt="Elytrium" align="right">
 
 # LimboAPI

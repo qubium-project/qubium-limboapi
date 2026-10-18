@@ -73,6 +73,9 @@ public class LimboSessionHandlerImpl implements MinecraftSessionHandler {
 
   private static final MethodHandle TEARDOWN_METHOD;
 
+  // QUBIUM: how long after arriving a stray keepalive answer is ignored rather than closing the connection.
+  private static final long STALE_KEEPALIVE_GRACE_MILLIS = 5_000;
+
   private final LimboAPI plugin;
   private final LimboImpl limbo;
   private final ConnectedPlayer player;
@@ -95,6 +98,8 @@ public class LimboSessionHandlerImpl implements MinecraftSessionHandler {
   private boolean keepAlivePending;
   private int keepAlivesSkipped;
   private long keepAliveSentTime;
+  // QUBIUM: when the player arrived here; see handle(KeepAlivePacket).
+  private final long joinTime = System.currentTimeMillis();
   private int ping = -1;
   private int genericBytes;
   private boolean loaded;
@@ -275,6 +280,17 @@ public class LimboSessionHandlerImpl implements MinecraftSessionHandler {
   @Override
   public boolean handle(KeepAlivePacket packet) {
     MinecraftConnection connection = this.player.getConnection();
+    // QUBIUM: a player moved here from a server may still answer that server's keepalive, sent right before the
+    // move. Closing the connection for it dropped players entering the limbo ("unknown packet id" on the client).
+    // Such an answer is dropped while the player has just arrived; later a wrong or unexpected keepalive closes
+    // the connection as before.
+    if ((!this.keepAlivePending || packet.getRandomId() != this.keepAliveKey)
+        && System.currentTimeMillis() - this.joinTime < STALE_KEEPALIVE_GRACE_MILLIS) {
+      if (Settings.IMP.MAIN.LOGGING_ENABLED) {
+        LimboAPI.getLogger().info("{} answered a keepalive of the previous server, ignored.", this.player);
+      }
+      return true;
+    }
     if (this.keepAlivePending) {
       if (packet.getRandomId() != this.keepAliveKey) {
         connection.closeWith(this.plugin.getPackets().getInvalidPing());
